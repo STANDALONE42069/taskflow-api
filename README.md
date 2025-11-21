@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/check-circle-2.svg" width="80" height="80" alt="TaskFlow Logo" />
+  <img src="https://www.svgrepo.com/show/430198/workflow-diagram-process.svg" width="80" height="80" alt="TaskFlow Logo" />
 </p>
 
 <h1 align="center">TaskFlow</h1>
