@@ -93,7 +93,7 @@ pipeline {
                             -w "$WORKSPACE" \\
                             -e SONAR_HOST_URL \\
                             -e SONAR_TOKEN \\
-                            sonarsource/sonar-scanner-cli:8.1.0.6389 \\
+                            sonarsource/sonar-scanner-cli:5.0.1@sha256:02372948eaeeb10dfbe0cfd4174d44b8e405d0aeae431532b2bdb21d0347bf23 \\
                             -Dsonar.projectKey=taskflow-api \\
                             -Dsonar.projectName="Taskflow API" \\
                             -Dsonar.sources=backend/src \\

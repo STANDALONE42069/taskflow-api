@@ -4,7 +4,7 @@ The `taskflow-lab4` multibranch job runs these gates for each branch:
 
 1. Install and lint the API with Node.js 20.
 2. Run Jest and publish JUnit and Cobertura reports to Jenkins.
-3. Upload the LCOV report to SonarQube and wait for the quality gate. The `Taskflow Lab 5 70%` gate must fail below 70% coverage.
+3. Upload the LCOV report to SonarQube and wait for the quality gate. The `Taskflow API 70 Coverage` gate must fail below 70% overall coverage.
 4. Start the API with Docker Compose, run three Playwright API checks, and archive the JUnit and HTML reports.
 5. Keep the Lab 04 branch-based staging and production stages after the quality gates.
 
