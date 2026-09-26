@@ -59,6 +59,29 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy — Staging') {
+            when { branch 'develop' }
+            steps {
+                sh 'echo deploying to staging--.'
+            }
+        }
+
+        stage('Deploy — Production') {
+            when {
+                // Skip the approval prompt as well as deployment on feature/PR/develop.
+                beforeInput true
+                branch 'main'
+            }
+            input {
+                message 'Deploy to production?'
+                ok 'Approve production'
+                submitter 'jenkins'
+            }
+            steps {
+                sh 'echo deploying to production--.'
+            }
+        }
     }
 
     post {
