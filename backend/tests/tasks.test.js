@@ -150,8 +150,7 @@ describe('Tasks API', () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      // Lab 3 deliberate failure: the API returns "ok". Restore after the red build.
-      expect(body.status).toBe('intentionally-broken-for-lab3');
+      expect(body.status).toBe('ok');
     });
   });
 });
