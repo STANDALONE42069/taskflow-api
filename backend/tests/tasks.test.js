@@ -1,6 +1,21 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals';
+import { once } from 'node:events';
+import app from '../src/index.js';
 
-const API_URL = 'http://localhost:5000';
+let API_URL;
+let server;
+
+beforeAll(async () => {
+  server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  API_URL = `http://127.0.0.1:${server.address().port}`;
+});
+
+afterAll(async () => {
+  await new Promise((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+  });
+});
 
 describe('Tasks API', () => {
   describe('GET /api/tasks', () => {

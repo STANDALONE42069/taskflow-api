@@ -27,29 +27,6 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['**/*.jsx'],
-      extends: [
-        'plugin:react/recommended',
-        'plugin:react/jsx-runtime',
-        'plugin:react-hooks/recommended',
-      ],
-      plugins: ['react', 'react-hooks', 'react-refresh'],
-      settings: {
-        react: {
-          version: 'detect',
-        },
-      },
-      rules: {
-        'react/prop-types': 'off',
-        'react/jsx-uses-react': 'off',
-        'react/react-in-jsx-scope': 'off',
-        'react-refresh/only-export-components': [
-          'warn',
-          { allowConstantExport: true },
-        ],
-      },
-    },
-    {
       files: ['**/*.test.js', '**/*.spec.js'],
       env: {
         jest: true,
