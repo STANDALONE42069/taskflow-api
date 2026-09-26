@@ -35,6 +35,9 @@ pids/
 coverage/
 *.lcov
 .nyc_output/
+backend/reports/
+backend/playwright-report/
+backend/test-results/
 
 # IDE
 .idea/
