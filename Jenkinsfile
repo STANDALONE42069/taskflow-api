@@ -11,6 +11,10 @@ pipeline {
         NODE_ENV = 'test'
         CI = 'true'
         NPM_CONFIG_CACHE = "${env.WORKSPACE}/.npm-cache"
+        // Bound each registry request so a stalled download can retry within the pipeline timeout.
+        NPM_CONFIG_FETCH_TIMEOUT = '30000'
+        NPM_CONFIG_FETCH_RETRY_MINTIMEOUT = '1000'
+        NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT = '5000'
     }
 
     options {
