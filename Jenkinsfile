@@ -132,7 +132,7 @@ pipeline {
                 sh '''
                     set -eu
                     docker compose -p "taskflow-e2e-${BUILD_NUMBER}" down --remove-orphans || true
-                    API_PORT="$E2E_PORT" docker compose -p "taskflow-e2e-${BUILD_NUMBER}" up -d --build api
+                    NODE_ENV=production API_PORT="$E2E_PORT" docker compose -p "taskflow-e2e-${BUILD_NUMBER}" up -d --build api
 
                     api_container="$(docker compose -p "taskflow-e2e-${BUILD_NUMBER}" ps -q api)"
                     for attempt in $(seq 1 60); do
@@ -150,7 +150,7 @@ pipeline {
                     workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/home/jenkins/agent"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
                     test -n "$workspace_volume"
                     docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
-                        --add-host=host.docker.internal:host-gateway \\
+                        --user 1000:1000 --add-host=host.docker.internal:host-gateway \\
                         -w "$WORKSPACE/backend" \\
                         -e TASKFLOW_API_URL="http://host.docker.internal:$E2E_PORT" \\
                         mcr.microsoft.com/playwright:v1.63.0-noble \\
