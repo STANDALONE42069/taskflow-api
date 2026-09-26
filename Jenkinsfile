@@ -73,7 +73,7 @@ pipeline {
             post {
                 always {
                     junit testResults: 'backend/reports/junit.xml', allowEmptyResults: true
-                    publishCoverage adapters: [coberturaAdapter('backend/coverage/cobertura-coverage.xml')]
+                    recordCoverage tools: [[parser: 'COBERTURA', pattern: 'backend/coverage/cobertura-coverage.xml']]
                 }
                 failure {
                     script { env.FAILED_STAGE = env.STAGE_NAME }
