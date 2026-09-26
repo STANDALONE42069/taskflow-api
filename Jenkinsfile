@@ -11,6 +11,10 @@ pipeline {
         NODE_ENV = 'test'
         CI = 'true'
         NPM_CONFIG_CACHE = "${env.WORKSPACE}/.npm-cache"
+        // Bound each registry request so a stalled download can retry within the pipeline timeout.
+        NPM_CONFIG_FETCH_TIMEOUT = '30000'
+        NPM_CONFIG_FETCH_RETRY_MINTIMEOUT = '1000'
+        NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT = '5000'
     }
 
     options {
@@ -57,6 +61,29 @@ pipeline {
                 failure {
                     script { env.FAILED_STAGE = env.STAGE_NAME }
                 }
+            }
+        }
+
+        stage('Deploy — Staging') {
+            when { branch 'develop' }
+            steps {
+                sh 'echo deploying to staging--.'
+            }
+        }
+
+        stage('Deploy — Production') {
+            when {
+                // Skip the approval prompt as well as deployment on feature/PR/develop.
+                beforeInput true
+                branch 'main'
+            }
+            input {
+                message 'Deploy to production?'
+                ok 'Approve production'
+                submitter 'jenkins'
+            }
+            steps {
+                sh 'echo deploying to production--.'
             }
         }
     }
