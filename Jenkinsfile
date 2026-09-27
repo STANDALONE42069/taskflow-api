@@ -14,10 +14,30 @@ pipeline {
 
     options {
         // A hung install or test must not occupy an executor forever; cap the whole run.
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 30, unit: 'MINUTES')
     }
 
     stages {
+        stage('Secrets Detection — Full Git History') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        ghcr.io/gitleaks/gitleaks:v8.30.1 \\
+                        git . --redact=100 --report-format json --report-path security-reports/gitleaks.json
+                '''
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
         stage('Install') {
             agent {
                 docker {
@@ -31,6 +51,130 @@ pipeline {
                 dir('backend') {
                     sh 'npm ci'
                 }
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('SAST — ESLint and Semgrep') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        semgrep/semgrep:1.178.0 \\
+                        semgrep scan --config=p/owasp-top-ten --config=p/nodejs --metrics=off \\
+                            --sarif --sarif-output=security-reports/semgrep.sarif backend/src > /dev/null
+                    cd backend
+                    npx eslint --plugin security --format @microsoft/eslint-formatter-sarif \\
+                        src/ > ../security-reports/eslint-security.sarif
+                '''
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('SCA — npm audit') {
+            steps {
+                script {
+                    env.AUDIT_PREFIX = env.BRANCH_NAME == 'feature/lab6-cve-demo' ? 'security/critical-demo' : 'backend'
+                }
+                sh '''
+                    set +e
+                    npm audit --prefix "$AUDIT_PREFIX" --audit-level=high --json \\
+                        > security-reports/npm-audit.json
+                    audit_status=$?
+                    set -e
+                    echo "npm audit exit status: $audit_status (the OPA policy applies the critical-only build gate)"
+                    node scripts/check-audit.js security-reports/npm-audit.json
+                '''
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('Generate and Sign SBOM') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        ghcr.io/anchore/syft:v1.52.0 \\
+                        dir:backend --source-name taskflow-api --source-version 1.0.0 \\
+                            -o cyclonedx-json=security-reports/taskflow-api.cdx.json
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
+                        signing-config create --no-default-fulcio --no-default-oidc \\
+                            --no-default-rekor --no-default-tsa \\
+                            --out security-reports/local-signing-config.json
+                    trap 'rm -f security-reports/lab6-cosign.key' EXIT
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        -e COSIGN_PASSWORD= \\
+                        ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
+                        generate-key-pair --output-key-prefix security-reports/lab6-cosign
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        -e COSIGN_PASSWORD= \\
+                        ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
+                        sign-blob --signing-config security-reports/local-signing-config.json \\
+                            --key security-reports/lab6-cosign.key \\
+                            --bundle security-reports/taskflow-api.cdx.json.sigstore.json \\
+                            --yes security-reports/taskflow-api.cdx.json
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
+                        verify-blob --key security-reports/lab6-cosign.pub \\
+                            --bundle security-reports/taskflow-api.cdx.json.sigstore.json \\
+                            --insecure-ignore-tlog security-reports/taskflow-api.cdx.json
+                    rm -f security-reports/lab6-cosign.key
+                '''
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('Policy Gate — OPA critical CVEs') {
+            steps {
+                sh '''
+                    set -eu
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    decision="$(docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE" \\
+                        openpolicyagent/opa:1.21.0 \\
+                        eval --format raw --input security-reports/npm-audit.json \\
+                            --data policy/security.rego data.security.deny)"
+                    echo "OPA decision security.deny=$decision"
+                    if [ "$decision" = true ]; then
+                        echo 'POLICY BLOCK: npm audit found one or more critical vulnerabilities.'
+                        exit 1
+                    fi
+                    if [ "$decision" != false ]; then
+                        echo 'Policy returned an invalid decision; failing closed.'
+                        exit 1
+                    fi
+                    echo 'POLICY PASS: no critical vulnerabilities.'
+                '''
             }
             post {
                 failure {
@@ -202,6 +346,7 @@ pipeline {
             echo "❌ Failed at stage: ${env.FAILED_STAGE ?: env.STAGE_NAME}"
         }
         always {
+            archiveArtifacts artifacts: 'security-reports/**', allowEmptyArchive: true, fingerprint: true
             archiveArtifacts artifacts: '**/npm-debug.log*', allowEmptyArchive: true
         }
     }
