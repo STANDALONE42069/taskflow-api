@@ -1,6 +1,14 @@
 pipeline {
     agent { label 'linux-build' }
 
+    parameters {
+        booleanParam(
+            name: 'LAB7_INJECT_FAILURE',
+            defaultValue: false,
+            description: 'Use a missing image tag to demonstrate automatic blue/green rollback.'
+        )
+    }
+
     environment {
         APP_NAME = 'taskflow-api'
         NODE_ENV = 'test'
@@ -327,6 +335,94 @@ pipeline {
             }
         }
 
+        stage('Container Image — Build, Push, Trivy') {
+            when { branch 'codex/lab7-green-blue' }
+            steps {
+                script {
+                    def commit = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    env.LAB7_COMMIT = commit
+                    env.LAB7_IMAGE_REF = "localhost:5001/taskflow-api:${commit}"
+                }
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
+                    echo "Building immutable image ${LAB7_IMAGE_REF}"
+                    docker build --file backend/Dockerfile --tag "$LAB7_IMAGE_REF" backend
+                    docker push "$LAB7_IMAGE_REF"
+
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    set +e
+                    docker run --rm \\
+                        --volume /var/run/docker.sock:/var/run/docker.sock \\
+                        --volume "$workspace_volume:/home/jenkins/agent" \\
+                        --workdir "$WORKSPACE" \\
+                        aquasec/trivy:0.74.0 \\
+                        image --format sarif --output security-reports/trivy-image.sarif \\
+                            --exit-code 1 --severity HIGH,CRITICAL "$LAB7_IMAGE_REF"
+                    trivy_status=$?
+                    set -e
+                    test -s security-reports/trivy-image.sarif
+                    echo "TRIVY_GATE_EXIT_CODE=$trivy_status (HIGH,CRITICAL block the pipeline)"
+                    exit "$trivy_status"
+                '''
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('Deploy — Blue/Green') {
+            when { branch 'codex/lab7-green-blue' }
+            steps {
+                script {
+                    sh 'mkdir -p lab7-evidence'
+                    def activeColor = sh(
+                        script: "sh scripts/lab7-kubectl.sh get service taskflow-api -o jsonpath='{.spec.selector.color}' 2>/dev/null || true",
+                        returnStdout: true
+                    ).trim()
+
+                    if (activeColor in ['blue', 'green']) {
+                        env.LAB7_PREVIOUS_COLOR = activeColor
+                        env.LAB7_TARGET_COLOR = activeColor == 'blue' ? 'green' : 'blue'
+                        env.LAB7_BOOTSTRAP = 'false'
+                    } else {
+                        env.LAB7_PREVIOUS_COLOR = 'blue'
+                        env.LAB7_TARGET_COLOR = 'green'
+                        env.LAB7_BOOTSTRAP = 'true'
+                    }
+
+                    echo "DETECTED_ACTIVE_COLOR=${env.LAB7_PREVIOUS_COLOR}"
+                    echo "INACTIVE_TARGET_COLOR=${env.LAB7_TARGET_COLOR}"
+                    env.LAB7_DEPLOY_IMAGE = params.LAB7_INJECT_FAILURE
+                        ? "localhost:5001/taskflow-api:missing-${env.LAB7_COMMIT}"
+                        : env.LAB7_IMAGE_REF
+                    echo "DEPLOY_IMAGE=${env.LAB7_DEPLOY_IMAGE}"
+
+                    withEnv([
+                        "LAB7_BOOTSTRAP=${env.LAB7_BOOTSTRAP}",
+                        "LAB7_PREVIOUS_COLOR=${env.LAB7_PREVIOUS_COLOR}",
+                        "LAB7_TARGET_COLOR=${env.LAB7_TARGET_COLOR}",
+                        "LAB7_DEPLOY_IMAGE=${env.LAB7_DEPLOY_IMAGE}"
+                    ]) {
+                        sh 'sh scripts/lab7-deploy.sh'
+                    }
+                }
+            }
+            post {
+                failure {
+                    script {
+                        if (env.LAB7_PREVIOUS_COLOR in ['blue', 'green']) {
+                            withEnv(["LAB7_PREVIOUS_COLOR=${env.LAB7_PREVIOUS_COLOR}"]) {
+                                sh 'sh scripts/lab7-rollback.sh'
+                            }
+                        }
+                    }
+                }
+            }
+        }
         stage('Deploy — Staging') {
             when { branch 'develop' }
             steps {
@@ -361,6 +457,7 @@ pipeline {
         }
         always {
             archiveArtifacts artifacts: 'security-reports/**', allowEmptyArchive: true, fingerprint: true
+            archiveArtifacts artifacts: 'lab7-evidence/**', allowEmptyArchive: true, fingerprint: true
             archiveArtifacts artifacts: '**/npm-debug.log*', allowEmptyArchive: true
         }
     }
