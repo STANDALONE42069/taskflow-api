@@ -49,7 +49,7 @@ pipeline {
         stage('Install') {
             agent {
                 docker {
-                    image 'node:20-alpine'
+                    image 'node:24-alpine3.24'
                     reuseNode true
                 }
             }
@@ -208,7 +208,7 @@ pipeline {
         stage('Lint') {
             agent {
                 docker {
-                    image 'node:20-alpine'
+                    image 'node:24-alpine3.24'
                     reuseNode true
                 }
             }
@@ -227,7 +227,7 @@ pipeline {
         stage('Unit Test') {
             agent {
                 docker {
-                    image 'node:20-alpine'
+                    image 'node:24-alpine3.24'
                     reuseNode true
                 }
             }
@@ -356,6 +356,7 @@ pipeline {
                     docker run --rm \\
                         --volume /var/run/docker.sock:/var/run/docker.sock \\
                         --volume "$workspace_volume:/home/jenkins/agent" \\
+                        --volume lab7-trivy-cache:/root/.cache/trivy \\
                         --workdir "$WORKSPACE" \\
                         aquasec/trivy:0.74.0 \\
                         image --format sarif --output security-reports/trivy-image.sarif \\

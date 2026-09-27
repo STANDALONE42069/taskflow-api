@@ -1,18 +1,20 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine3.24 AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Production stage
-FROM node:20-alpine
+FROM node:24-alpine3.24
 
 WORKDIR /app
 
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN apk upgrade --no-cache && \
+    addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --chown=nodejs:nodejs . .
