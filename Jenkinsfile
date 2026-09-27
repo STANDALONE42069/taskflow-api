@@ -7,6 +7,11 @@ pipeline {
             defaultValue: false,
             description: 'Use a missing image tag to demonstrate automatic blue/green rollback.'
         )
+        booleanParam(
+            name: 'LAB9_RUN_K8S_BURST',
+            defaultValue: false,
+            description: 'Run ten 6-minute Kubernetes agent requests for the Lab 9 queue-alert demonstration.'
+        )
     }
 
     environment {
@@ -242,6 +247,40 @@ pipeline {
                     junit testResults: 'backend/reports/junit.xml', allowEmptyResults: true
                     recordCoverage tools: [[parser: 'COBERTURA', pattern: 'backend/coverage/cobertura-coverage.xml']]
                 }
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('Lab 9 — Kubernetes Burst Demo') {
+            when {
+                allOf {
+                    branch 'codex/lab9-k8s-metrics'
+                    expression { return params.LAB9_RUN_K8S_BURST }
+                }
+            }
+            steps {
+                script {
+                    def burst = [:]
+                    for (int i = 1; i <= 10; i++) {
+                        def slot = i
+                        burst["k8s-build-${slot}"] = {
+                            node('k8s-node') {
+                                echo "LAB9_POD_START slot=${slot} node=${env.NODE_NAME}"
+                                container('node') {
+                                    sh 'node --version'
+                                }
+                                // Keep the queue saturated long enough for the 5-minute alert.
+                                sleep(time: 360, unit: 'SECONDS')
+                                echo "LAB9_POD_DONE slot=${slot} node=${env.NODE_NAME}"
+                            }
+                        }
+                    }
+                    parallel burst
+                }
+            }
+            post {
                 failure {
                     script { env.FAILED_STAGE = env.STAGE_NAME }
                 }

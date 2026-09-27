@@ -1,0 +1,63 @@
+groups:
+  - name: jenkins-slo
+    interval: 15s
+    rules:
+      - record: jenkins_queue_size_value
+        expr: default_jenkins_executors_queue_length
+
+      - record: jenkins:build_success_ratio_7d
+        expr: |
+          sum(
+            (default_jenkins_builds_build_result_ordinal == bool 0)
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+          )
+          /
+          clamp_min(
+            count(
+              (default_jenkins_builds_build_result_ordinal < 3)
+                and on (jenkins_job, number)
+                (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+            ),
+            1
+          )
+
+      - record: jenkins:build_duration_p95_seconds_7d
+        expr: |
+          quantile(
+            0.95,
+            default_jenkins_builds_build_duration_milliseconds
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+          ) / 1000
+
+      - record: jenkins:builds_under_6m_ratio_7d
+        expr: |
+          sum(
+            (default_jenkins_builds_build_duration_milliseconds <= bool 360000)
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+          )
+          /
+          clamp_min(
+            count(default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000),
+            1
+          )
+
+      - alert: JenkinsQueueBacklog
+        expr: jenkins_queue_size_value > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Jenkins build queue has been non-empty for five minutes
+          description: "{{ $value }} Jenkins item(s) are waiting for an executor."
+
+      - alert: JenkinsBuildDurationSLO
+        expr: jenkins:builds_under_6m_ratio_7d < 0.95
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fewer than 95% of builds finished within six minutes
+          description: "The rolling seven-day under-six-minute ratio is {{ $value | humanizePercentage }}."
