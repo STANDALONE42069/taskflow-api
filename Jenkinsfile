@@ -95,7 +95,13 @@ pipeline {
                     audit_status=$?
                     set -e
                     echo "npm audit exit status: $audit_status (the OPA policy applies the critical-only build gate)"
-                    node scripts/check-audit.js security-reports/npm-audit.json
+                    set +e
+                    node scripts/check-audit.js security-reports/npm-audit.json \
+                        > security-reports/npm-audit-summary.log 2>&1
+                    parser_status=$?
+                    set -e
+                    cat security-reports/npm-audit-summary.log
+                    exit "$parser_status"
                 '''
             }
             post {
@@ -119,6 +125,7 @@ pipeline {
                             -o cyclonedx-json=security-reports/taskflow-api.cdx.json
                     docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
                         -w "$WORKSPACE" \\
+                        --user 1000:1000 \\
                         ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
                         signing-config create --no-default-fulcio --no-default-oidc \\
                             --no-default-rekor --no-default-tsa \\
@@ -126,11 +133,13 @@ pipeline {
                     trap 'rm -f security-reports/lab6-cosign.key' EXIT
                     docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
                         -w "$WORKSPACE" \\
+                        --user 1000:1000 \\
                         -e COSIGN_PASSWORD= \\
                         ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
                         generate-key-pair --output-key-prefix security-reports/lab6-cosign
                     docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
                         -w "$WORKSPACE" \\
+                        --user 1000:1000 \\
                         -e COSIGN_PASSWORD= \\
                         ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
                         sign-blob --signing-config security-reports/local-signing-config.json \\
@@ -139,6 +148,7 @@ pipeline {
                             --yes security-reports/taskflow-api.cdx.json
                     docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
                         -w "$WORKSPACE" \\
+                        --user 1000:1000 \\
                         ghcr.io/sigstore/cosign/cosign:v3.1.3 \\
                         verify-blob --key security-reports/lab6-cosign.pub \\
                             --bundle security-reports/taskflow-api.cdx.json.sigstore.json \\
@@ -159,21 +169,25 @@ pipeline {
                     set -eu
                     workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination \"/home/jenkins/agent\"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
                     test -n "$workspace_volume"
+                    : > security-reports/policy-gate.log
                     decision="$(docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
                         -w "$WORKSPACE" \\
                         openpolicyagent/opa:1.21.0 \\
                         eval --format raw --input security-reports/npm-audit.json \\
                             --data policy/security.rego data.security.deny)"
-                    echo "OPA decision security.deny=$decision"
+                    echo "OPA decision security.deny=$decision" | tee -a security-reports/policy-gate.log
                     if [ "$decision" = true ]; then
-                        echo 'POLICY BLOCK: npm audit found one or more critical vulnerabilities.'
+                        echo 'POLICY BLOCK: npm audit found one or more critical vulnerabilities.' \\
+                            | tee -a security-reports/policy-gate.log
                         exit 1
                     fi
                     if [ "$decision" != false ]; then
-                        echo 'Policy returned an invalid decision; failing closed.'
+                        echo 'Policy returned an invalid decision; failing closed.' \\
+                            | tee -a security-reports/policy-gate.log
                         exit 1
                     fi
-                    echo 'POLICY PASS: no critical vulnerabilities.'
+                    echo 'POLICY PASS: no critical vulnerabilities.' \\
+                        | tee -a security-reports/policy-gate.log
                 '''
             }
             post {
