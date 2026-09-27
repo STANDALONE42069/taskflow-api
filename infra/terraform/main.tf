@@ -108,8 +108,8 @@ resource "aws_key_pair" "taskflow" {
   }
 }
 
-#checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
 resource "aws_instance" "network_bootstrap" {
+  #checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
   ami                    = var.ami_id
   instance_type          = "t3.small"
   ebs_optimized          = true
@@ -136,8 +136,8 @@ resource "aws_instance" "network_bootstrap" {
   }
 }
 
-#checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
 resource "aws_instance" "taskflow" {
+  #checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
   ami                    = var.ami_id
   instance_type          = "t3.small"
   ebs_optimized          = true
