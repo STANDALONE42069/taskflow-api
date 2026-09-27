@@ -33,6 +33,10 @@ The apply creates an Internet Gateway and a default route so Ansible can
 install Python, Node.js, and Docker from Ubuntu repositories. The security
 group limits outbound traffic to DNS, HTTP, and HTTPS. Terraform removes the
 route, gateway, and all other managed resources after the health check.
+LocalEmu creates its VPC Docker bridge only when the first EC2 instance starts.
+The plan therefore creates a small, short-lived `network_bootstrap` instance
+before attaching the Internet Gateway; this lets LocalEmu switch the bridge to
+internet-enabled mode before it starts the application host.
 
 The Ansible controller uses the pinned `community.docker` collection.
 LocalEmu models EC2 as a container and does not put a Docker daemon inside
@@ -45,6 +49,7 @@ fixture, then scan the deployable configuration. The deployable security group
 allows inbound SSH and API traffic only from the VPC. Outbound access is limited
 to DNS and HTTP/HTTPS so Ansible can install Ubuntu packages and pull the already
 scanned Lab 7 image; tfsec marks these three narrowly scoped public egress rules
-as reviewed exceptions with an expiration date. The EC2 instance has an empty
-IAM role (no attached permissions), IMDSv2, encrypted storage, detailed
-monitoring, and EBS optimization.
+as reviewed exceptions with an expiration date. Both EC2 instances have an
+empty IAM role (no attached permissions), IMDSv2, encrypted storage, and EBS
+optimization. Detailed monitoring is disabled because LocalEmu does not
+implement the `MonitorInstances` API.

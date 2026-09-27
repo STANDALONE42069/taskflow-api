@@ -5,6 +5,11 @@ data "aws_vpc" "default" {
 resource "aws_internet_gateway" "taskflow" {
   vpc_id = data.aws_vpc.default.id
 
+  # LocalEmu lazily creates the Docker VPC bridge on the first EC2 launch.
+  # Materialize it first so AttachInternetGateway can switch the bridge out
+  # of internal mode before the application host needs package-repository access.
+  depends_on = [aws_instance.network_bootstrap]
+
   tags = {
     Name    = "taskflow-lab8-${var.build_id}"
     Project = "taskflow-api"
@@ -103,13 +108,42 @@ resource "aws_key_pair" "taskflow" {
   }
 }
 
+#checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
+resource "aws_instance" "network_bootstrap" {
+  ami                    = var.ami_id
+  instance_type          = "t3.small"
+  ebs_optimized          = true
+  key_name               = aws_key_pair.taskflow.key_name
+  iam_instance_profile   = aws_iam_instance_profile.taskflow.name
+  monitoring             = false
+  vpc_security_group_ids = [aws_security_group.taskflow.id]
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  root_block_device {
+    encrypted   = true
+    volume_size = 8
+    volume_type = "gp3"
+  }
+
+  tags = {
+    Name    = "taskflow-lab8-${var.build_id}-network-bootstrap"
+    Project = "taskflow-api"
+    Lab     = "8"
+  }
+}
+
+#checkov:skip=CKV_AWS_126:LocalEmu does not implement MonitorInstances; detailed monitoring stays disabled in this short-lived sandbox.
 resource "aws_instance" "taskflow" {
   ami                    = var.ami_id
   instance_type          = "t3.small"
   ebs_optimized          = true
   key_name               = aws_key_pair.taskflow.key_name
   iam_instance_profile   = aws_iam_instance_profile.taskflow.name
-  monitoring             = true
+  monitoring             = false
   vpc_security_group_ids = [aws_security_group.taskflow.id]
 
   depends_on = [aws_route.taskflow_internet]
