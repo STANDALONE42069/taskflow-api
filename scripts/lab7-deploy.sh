@@ -7,6 +7,20 @@ kube() {
 
 mkdir -p lab7-evidence
 
+api_ready=false
+for attempt in $(seq 1 60); do
+    if kube get --raw=/readyz >/dev/null 2>&1; then
+        api_ready=true
+        break
+    fi
+    sleep 2
+done
+if [ "$api_ready" != true ]; then
+    echo 'Kubernetes API did not become ready within 120 seconds.'
+    exit 1
+fi
+echo 'Kubernetes API is ready.'
+
 if [ "$LAB7_BOOTSTRAP" = true ]; then
     sed "s|__TASKFLOW_IMAGE__|$LAB7_IMAGE_REF|g" k8s/lab7/deployment-template.yaml \
         | kube apply -f -

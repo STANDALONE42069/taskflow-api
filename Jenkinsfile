@@ -361,7 +361,7 @@ pipeline {
                         --workdir "$WORKSPACE" \\
                         aquasec/trivy:0.74.0 \\
                         image --format sarif --output security-reports/trivy-image.sarif \\
-                            --exit-code 1 --severity HIGH,CRITICAL "$LAB7_IMAGE_REF"
+                            --scanners vuln --exit-code 1 --severity HIGH,CRITICAL "$LAB7_IMAGE_REF"
                     trivy_status=$?
                     set -e
                     test -s security-reports/trivy-image.sarif
