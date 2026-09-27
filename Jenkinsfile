@@ -22,7 +22,8 @@ pipeline {
 
     options {
         // A hung install or test must not occupy an executor forever; cap the whole run.
-        timeout(time: 30, unit: 'MINUTES')
+        timeout(time: 90, unit: 'MINUTES')
+        disableConcurrentBuilds(abortPrevious: false)
     }
 
     stages {
@@ -336,7 +337,12 @@ pipeline {
         }
 
         stage('Container Image — Build, Push, Trivy') {
-            when { branch 'codex/lab7-green-blue' }
+            when {
+                anyOf {
+                    branch 'codex/lab7-green-blue'
+                    branch 'codex/lab8-iac'
+                }
+            }
             steps {
                 script {
                     def commit = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
@@ -373,6 +379,95 @@ pipeline {
                 failure {
                     script { env.FAILED_STAGE = env.STAGE_NAME }
                 }
+            }
+        }
+
+        stage('Lab 8 Docker Network') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh network'
+            }
+        }
+
+        stage('IaC Lint & Validate') {
+            when { branch 'codex/lab8-iac' }
+            parallel {
+                stage('Terraform fmt & validate') {
+                    steps {
+                        sh 'sh scripts/lab8-pipeline.sh lint-terraform'
+                    }
+                }
+                stage('Ansible lint') {
+                    steps {
+                        sh 'sh scripts/lab8-pipeline.sh lint-ansible'
+                    }
+                }
+            }
+        }
+
+        stage('IaC Security Scan') {
+            when { branch 'codex/lab8-iac' }
+            parallel {
+                stage('tfsec before/after') {
+                    steps {
+                        sh 'sh scripts/lab8-pipeline.sh scan-tfsec'
+                    }
+                }
+                stage('Checkov before/after') {
+                    steps {
+                        sh 'sh scripts/lab8-pipeline.sh scan-checkov'
+                    }
+                }
+            }
+        }
+
+        stage('LocalEmu Setup — S3 Remote State') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh setup'
+            }
+        }
+
+        stage('Terraform Plan') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh plan'
+            }
+        }
+
+        stage('Approval — Terraform Apply') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                script {
+                    def planSummary = readFile('infra/terraform/tfplan-summary.txt').trim()
+                    input(
+                        id: "lab8-terraform-apply-${env.BUILD_NUMBER}",
+                        message: "Review the Terraform plan before applying:\n\n${planSummary}\n\nThis LocalEmu EC2 instance is short-lived and will be destroyed after the Ansible health check.",
+                        ok: 'Approve Terraform Apply',
+                        submitter: 'jenkins'
+                    )
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh apply'
+            }
+        }
+
+        stage('Configure with Ansible') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh configure-ansible'
+            }
+        }
+
+        stage('Terraform Destroy — Verify Empty State') {
+            when { branch 'codex/lab8-iac' }
+            steps {
+                sh 'sh scripts/lab8-pipeline.sh destroy'
             }
         }
 
@@ -459,8 +554,15 @@ pipeline {
             echo "❌ Failed at stage: ${env.FAILED_STAGE ?: env.STAGE_NAME}"
         }
         always {
+            script {
+                if (env.BRANCH_NAME == 'codex/lab8-iac') {
+                    sh 'sh scripts/lab8-pipeline.sh destroy'
+                    sh 'rm -f infra/ansible/.lab8_key infra/ansible/.lab8_key.pub infra/ansible/inventory.ini'
+                }
+            }
             archiveArtifacts artifacts: 'security-reports/**', allowEmptyArchive: true, fingerprint: true
             archiveArtifacts artifacts: 'lab7-evidence/**', allowEmptyArchive: true, fingerprint: true
+            archiveArtifacts artifacts: 'infra/terraform/tfplan,infra/terraform/tfplan.txt,infra/terraform/tfplan-summary.txt,lab8-evidence/**', allowEmptyArchive: true, fingerprint: true
             archiveArtifacts artifacts: '**/npm-debug.log*', allowEmptyArchive: true
         }
     }
