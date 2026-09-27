@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: jenkins-agents
+  labels:
+    app.kubernetes.io/part-of: taskflow-lab10
+    taskflow.dev/agent-profile: api
+spec:
+  serviceAccountName: jenkins-agent
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: node
+      image: node:24-alpine3.24
+      command: ["sh", "-c", "cat"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: tools
+      image: alpine:3.24
+      command: ["/bin/sh", "-c", "apk add --no-cache bash coreutils curl git gzip tar unzip && sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    - name: python
+      image: python:3.13-slim
+      command: ["sh", "-c", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: sonar
+      image: sonarsource/sonar-scanner-cli:5.0.1@sha256:02372948eaeeb10dfbe0cfd4174d44b8e405d0aeae431532b2bdb21d0347bf23
+      command: ["/bin/sh", "-c", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: playwright
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      command: ["/bin/bash", "-lc", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+    - name: buildkit
+      image: moby/buildkit:v0.33.0-rootless
+      command: ["/bin/sh", "-c", "sleep infinity"]
+      tty: true
+      env:
+        - name: BUILDKITD_FLAGS
+          value: --oci-worker-no-process-sandbox
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi

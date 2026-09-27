@@ -11,8 +11,7 @@ scrape_configs:
     scrape_interval: 15s
     static_configs:
       - targets: ["host.docker.internal:8081"]
-    # If Jenkins requires authentication, create a dedicated account with
-    # Metrics/View and mount its API token at the ignored local path below.
+    # Enable after creating the read-only Jenkins service user and local token file.
     # basic_auth:
     #   username: prometheus
     #   password_file: /etc/prometheus/secrets/jenkins-prometheus-token

@@ -6,9 +6,14 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:9090:9090"
+    networks:
+      default: {}
+      kind:
+        ipv4_address: 172.22.0.5
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/jenkins-slo.yml:/etc/prometheus/rules/jenkins-slo.yml:ro
+      - ./secrets/jenkins-prometheus-token:/etc/prometheus/secrets/jenkins-prometheus-token:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -34,3 +39,8 @@ services:
 volumes:
   prometheus-data:
   grafana-data:
+
+networks:
+  kind:
+    name: kind
+    external: true
