@@ -141,7 +141,8 @@ lint_ansible() {
         --network "$DOCKER_NETWORK" \
         --volume "$WORKSPACE_VOLUME:/home/jenkins/agent" \
         --workdir "$WORKSPACE/infra/ansible" \
-        "$ANSIBLE_IMAGE" ansible-lint playbook.yml
+        --entrypoint /bin/sh \
+        "$ANSIBLE_IMAGE" -c 'ansible-galaxy collection install -r requirements.yml && ansible-lint playbook.yml'
 }
 
 scan_tfsec() {
@@ -222,7 +223,7 @@ configure_ansible() {
         exit 1
     fi
 
-    printf '[taskflow]\n%s ansible_user=ubuntu ansible_ssh_private_key_file=%s ansible_python_interpreter=/usr/bin/python3 instance_id=%s\n' \
+    printf '[taskflow]\n%s ansible_user=root ansible_ssh_private_key_file=%s ansible_python_interpreter=/usr/bin/python3 instance_id=%s\n' \
         "$address" "$WORKSPACE/infra/ansible/.lab8_key" "$instance_id" >infra/ansible/inventory.ini
     chmod 600 infra/ansible/inventory.ini
 
@@ -234,6 +235,7 @@ configure_ansible() {
     docker run --detach \
         --name "$runner_name" \
         --network "$instance_network" \
+        --volume /var/run/docker.sock:/var/run/docker.sock \
         --volume "$WORKSPACE_VOLUME:/home/jenkins/agent" \
         --workdir "$WORKSPACE/infra/ansible" \
         --env "ANSIBLE_CONFIG=$WORKSPACE/infra/ansible/ansible.cfg" \
@@ -241,6 +243,7 @@ configure_ansible() {
         --env "LAB7_IMAGE_REF=$LAB7_IMAGE_REF" \
         --entrypoint /bin/sh \
         "$ANSIBLE_IMAGE" -c 'while :; do sleep 3600; done' >/dev/null
+    docker exec "$runner_name" ansible-galaxy collection install -r requirements.yml
     docker exec "$runner_name" ansible-playbook playbook.yml \
         --inventory inventory.ini \
         --extra-vars "taskflow_image=$LAB7_IMAGE_REF"

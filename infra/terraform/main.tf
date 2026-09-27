@@ -2,6 +2,22 @@ data "aws_vpc" "default" {
   default = true
 }
 
+resource "aws_internet_gateway" "taskflow" {
+  vpc_id = data.aws_vpc.default.id
+
+  tags = {
+    Name    = "taskflow-lab8-${var.build_id}"
+    Project = "taskflow-api"
+    Lab     = "8"
+  }
+}
+
+resource "aws_route" "taskflow_internet" {
+  route_table_id         = data.aws_vpc.default.main_route_table_id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.taskflow.id
+}
+
 resource "aws_security_group" "taskflow" {
   name        = "taskflow-lab8-${var.build_id}"
   description = "TaskFlow Lab 8 access restricted to the VPC"
@@ -95,6 +111,8 @@ resource "aws_instance" "taskflow" {
   iam_instance_profile   = aws_iam_instance_profile.taskflow.name
   monitoring             = true
   vpc_security_group_ids = [aws_security_group.taskflow.id]
+
+  depends_on = [aws_route.taskflow_internet]
 
   metadata_options {
     http_endpoint = "enabled"

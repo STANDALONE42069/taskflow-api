@@ -2,7 +2,7 @@
 - name: Configure the short-lived TaskFlow compute host
   hosts: taskflow
   gather_facts: false
-  remote_user: ubuntu
+  remote_user: root
   become: true
 
   tasks:
@@ -24,37 +24,41 @@
       ansible.builtin.command: node --version
       changed_when: false
 
-    - name: Verify the Docker CLI can use the LocalEmu host socket
-      ansible.builtin.command: docker version
+    - name: Verify the Docker CLI is installed
+      ansible.builtin.command: docker --version
       changed_when: false
 
     - name: Remove a previous application container for this build
-      ansible.builtin.command: docker rm --force taskflow-api-lab8-{{ instance_id }}
-      register: previous_container
-      changed_when: previous_container.rc == 0
-      failed_when: false
+      community.docker.docker_container:
+        name: taskflow-api-lab8-{{ instance_id }}
+        state: absent
+        docker_host: unix:///var/run/docker.sock
+      delegate_to: localhost
+      become: false
 
     - name: Pull the immutable TaskFlow API image produced by Lab 7
-      ansible.builtin.command: docker pull {{ taskflow_image }}
-      changed_when: true
+      community.docker.docker_image:
+        name: "{{ taskflow_image }}"
+        source: pull
+        docker_host: unix:///var/run/docker.sock
+      delegate_to: localhost
+      become: false
 
     - name: Run TaskFlow API on the EC2 instance network namespace
-      ansible.builtin.command:
-        argv:
-          - docker
-          - run
-          - --detach
-          - --name
-          - taskflow-api-lab8-{{ instance_id }}
-          - --restart
-          - unless-stopped
-          - --network
-          - container:localemu-ec2-{{ instance_id }}
-          - --no-healthcheck
-          - --env
-          - PORT=8080
-          - "{{ taskflow_image }}"
-      changed_when: true
+      community.docker.docker_container:
+        name: taskflow-api-lab8-{{ instance_id }}
+        image: "{{ taskflow_image }}"
+        state: started
+        recreate: true
+        restart_policy: unless-stopped
+        network_mode: container:localemu-ec2-{{ instance_id }}
+        env:
+          PORT: "8080"
+        healthcheck:
+          test: ["NONE"]
+        docker_host: unix:///var/run/docker.sock
+      delegate_to: localhost
+      become: false
 
     - name: Wait for the TaskFlow health endpoint
       ansible.builtin.uri:

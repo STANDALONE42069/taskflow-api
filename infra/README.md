@@ -21,6 +21,25 @@ resources.
 The expected instance address is private to the emulated VPC. It is an emulated
 EC2 address, not a publicly reachable cloud address.
 
+LocalEmu's `ami-ubuntu-22.04` shortcut works with direct `RunInstances`, but
+the AWS Terraform provider first calls `DescribeImages` and LocalEmu does not
+list that shortcut in its AMI catalog. The pipeline therefore selects a valid
+catalog entry (`ami-785db401`); LocalEmu's Docker manager resolves catalog
+entries without a custom mapping to its managed Ubuntu 22.04 base image. That
+base image uses `root` for SSH. This AMI ID and user choice are for LocalEmu;
+they are not a real AWS deployment configuration.
+
+The apply creates an Internet Gateway and a default route so Ansible can
+install Python, Node.js, and Docker from Ubuntu repositories. The security
+group limits outbound traffic to DNS, HTTP, and HTTPS. Terraform removes the
+route, gateway, and all other managed resources after the health check.
+
+The Ansible controller uses the pinned `community.docker` collection.
+LocalEmu models EC2 as a container and does not put a Docker daemon inside
+that container, so the controller starts the API container through its Docker
+socket in the EC2 container's network namespace. Ansible installs Python,
+Node.js, and the Docker CLI on the guest.
+
 The before/after scans use an isolated deliberately vulnerable security-group
 fixture, then scan the deployable configuration. The deployable security group
 allows inbound SSH and API traffic only from the VPC. Outbound access is limited

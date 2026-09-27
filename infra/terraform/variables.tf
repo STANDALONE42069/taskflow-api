@@ -10,9 +10,9 @@ variable "public_key_path" {
 }
 
 variable "ami_id" {
-  description = "LocalEmu Docker-backed Ubuntu AMI identifier."
+  description = "LocalEmu AMI catalog ID. Its Docker backend resolves unregistered AMIs to its managed Ubuntu 22.04 base image."
   type        = string
-  default     = "ami-ubuntu-22.04"
+  default     = "ami-785db401"
 }
 
 variable "image_ref" {
