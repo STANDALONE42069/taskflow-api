@@ -312,7 +312,7 @@ pipeline {
                         -w "$WORKSPACE/backend" \\
                         -e TASKFLOW_API_URL="http://host.docker.internal:$E2E_PORT" \\
                         mcr.microsoft.com/playwright:v1.63.0-noble \\
-                        bash -lc 'npm ci && npx playwright test'
+                        bash -lc 'test -x node_modules/.bin/playwright && ./node_modules/.bin/playwright test'
                 '''
             }
             post {
