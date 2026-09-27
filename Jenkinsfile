@@ -346,6 +346,7 @@ pipeline {
                 sh '''
                     set -eu
                     mkdir -p security-reports
+                    rm -f security-reports/trivy-image.sarif
                     echo "Building immutable image ${LAB7_IMAGE_REF}"
                     docker build --file backend/Dockerfile --tag "$LAB7_IMAGE_REF" backend
                     docker push "$LAB7_IMAGE_REF"
@@ -379,7 +380,7 @@ pipeline {
             when { branch 'codex/lab7-green-blue' }
             steps {
                 script {
-                    sh 'mkdir -p lab7-evidence'
+                    sh 'mkdir -p lab7-evidence && rm -f lab7-evidence/*'
                     def activeColor = sh(
                         script: "sh scripts/lab7-kubectl.sh get service taskflow-api -o jsonpath='{.spec.selector.color}' 2>/dev/null || true",
                         returnStdout: true
@@ -420,6 +421,7 @@ pipeline {
                                 sh 'sh scripts/lab7-rollback.sh'
                             }
                         }
+                        env.FAILED_STAGE = env.STAGE_NAME
                     }
                 }
             }
