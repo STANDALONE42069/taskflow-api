@@ -38,7 +38,10 @@ The plan therefore creates a small, short-lived `network_bootstrap` instance
 before attaching the Internet Gateway; this lets LocalEmu switch the bridge to
 internet-enabled mode before it starts the application host.
 
-The Ansible controller uses the pinned `community.docker` collection.
+The Ansible controller installs the constrained Python `requests` requirement and
+uses the pinned `community.docker` collection. The collection's Docker modules
+run on the controller and require Requests there, so the pipeline installs it
+in the same container that runs `ansible-playbook`.
 LocalEmu models EC2 as a container and does not put a Docker daemon inside
 that container, so the controller starts the API container through its Docker
 socket in the EC2 container's network namespace. Ansible installs Python,

@@ -243,6 +243,8 @@ configure_ansible() {
         --env "LAB7_IMAGE_REF=$LAB7_IMAGE_REF" \
         --entrypoint /bin/sh \
         "$ANSIBLE_IMAGE" -c 'while :; do sleep 3600; done' >/dev/null
+    docker exec "$runner_name" python3 -m pip install --user \
+        --disable-pip-version-check -r requirements.txt
     docker exec "$runner_name" ansible-galaxy collection install -r requirements.yml
     docker exec "$runner_name" ansible-playbook playbook.yml \
         --inventory inventory.ini \
