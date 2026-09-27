@@ -43,9 +43,10 @@ for pod in $pods; do
     pod_ip=$(kube get pod "$pod" -o jsonpath='{.status.podIP}')
     smoke_pod="lab7-smoke-$BUILD_NUMBER-$index"
     echo "Direct smoke test: pod=$pod ip=$pod_ip"
-    kube run "$smoke_pod" --image=curlimages/curl:8.13.0 --restart=Never \
-        --image-pull-policy=IfNotPresent --command -- curl --fail --silent --show-error \
-        --max-time 15 "http://$pod_ip:5000/health"
+    kube run "$smoke_pod" --image="$LAB7_DEPLOY_IMAGE" --restart=Never \
+        --image-pull-policy=IfNotPresent --command -- node -e \
+        'fetch(process.argv[1]).then(async (response) => { const body = await response.text(); console.log(`HTTP ${response.status}: ${body}`); process.exit(response.ok ? 0 : 1); }).catch((error) => { console.error(error); process.exit(1); })' \
+        "http://$pod_ip:5000/health"
     set +e
     kube wait --for=jsonpath='{.status.phase}'=Succeeded "pod/$smoke_pod" --timeout=120s
     smoke_status=$?
