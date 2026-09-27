@@ -4,6 +4,7 @@
   "private": true,
   "description": "Lockfile-only fixture for the Lab 6 critical CVE policy gate",
   "dependencies": {
-    "praisonai": "1.7.4"
+    "praisonai": "1.7.1"
   }
 }
+
