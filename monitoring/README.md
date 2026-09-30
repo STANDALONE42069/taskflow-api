@@ -19,15 +19,15 @@ It does not include Jenkins credentials or tokens.
 3. In **Manage Jenkins → Clouds**, add a Kubernetes cloud using namespace
    `jenkins-agents`, that credential, and the existing kind API endpoint. Add a
    pod template with label `k8s-node`, container name `node`, and the contents of
-   `kubernetes/node-pod-template.yaml`. Set the cloud's maximum instance count
-   to **2** for the first burst.
+    `kubernetes/node-pod-template.yaml`. Set both the cloud and pod template
+    **Concurrency Limit** to **2** for the first burst.
 4. Push this branch and run its multibranch job with the
    `LAB9_RUN_K8S_BURST` parameter enabled. The `Lab 9 — Kubernetes Burst Demo`
    stage requests ten agents and holds them for six minutes. With the cap at two,
-   the remaining requests stay queued. The alert becomes active after
-   five minutes. Raise the cloud cap to ten; the queue should drain and the
-   alert should clear. Jenkins deletes the dynamic agent pods after each branch
-   finishes.
+    the remaining requests stay queued. The alert fires after the oldest item
+    has waited more than two minutes for a further five minutes. Raise both
+    concurrency limits to ten; the queue should drain and the alert should
+    clear. Jenkins deletes the dynamic agent pods after each branch finishes.
 
 The `Install` stage runs `npm ci` and unit tests in a fresh Kubernetes pod.
 The existing `linux-build` agent remains available for later stages that need
@@ -74,10 +74,16 @@ that window.
 
 ## Evidence
 
-Save the requested screenshots in `monitoring/lab9-evidence/`:
+The requested evidence is saved in `monitoring/lab9-evidence/`:
+PNG screenshots are local deliverables and are intentionally ignored by Git.
 
-- Jenkins build log with `LAB9_POD_START` and `LAB9_POD_DONE` entries, plus the
-  kind namespace showing ephemeral agent pods.
-- Prometheus/Grafana alert while the queue is held at a cap of two.
-- The same alert cleared after raising the cap and draining the queue.
-- Screenshot or export of the dashboard's three panels.
+- `Jenkinsfile.diff` shows the Kubernetes Install agent and burst stage.
+- `jenkins-queue-cap2.png` and `kubernetes-pods-running.txt` show the saturated
+  queue and live ephemeral pods.
+- `prometheus-queue-alert-firing.png` and
+  `prometheus-queue-alert-cleared.png` show the alert transition.
+- `jenkins-queue-cleared-cap10.png` shows that the queue drained.
+- `grafana-dashboard-queue8.png` and `grafana-dashboard-queue0.png` show all
+  three populated panels before and after the queue drained.
+- `jenkins-build3-success.png` shows the successful ten-request burst build.
+- `grafana/dashboards/jenkins-health.json` is the importable dashboard JSON.

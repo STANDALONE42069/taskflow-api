@@ -53,7 +53,8 @@
           "editorMode": "code",
           "expr": "100 * jenkins:build_success_ratio_7d",
           "legendFormat": "success rate",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -94,7 +95,8 @@
           "editorMode": "code",
           "expr": "jenkins:build_duration_p95_seconds_7d",
           "legendFormat": "p95 completed build duration",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -135,7 +137,8 @@
           "editorMode": "code",
           "expr": "jenkins_queue_size_value",
           "legendFormat": "waiting builds",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
