@@ -9,8 +9,8 @@ and require review for pipeline and deployment-permission changes.
 1. Configure a Kubernetes cloud named `kubernetes` from the Lab 9 kind cluster.
    Use namespace `jenkins-agents`, the Jenkins controller URL reachable from
    kind, and WebSocket agent connections. Keep the existing `k8s-node` label
-   template for the Lab 9 burst. Set the cloud instance cap to two for that
-   demonstration.
+   template for the Lab 9 burst. The local cloud and pod-template caps are 10
+   so the burst can request ten agents; size these limits to the cluster.
 2. Apply `monitoring/kubernetes/lab10-deploy-rbac.yaml` as a cluster
    administrator. It creates `jenkins-deployer` and grants it deployment,
    service, pod, pod-log, and event access only in the `default` namespace.
@@ -20,10 +20,12 @@ and require review for pipeline and deployment-permission changes.
    The production deploy pod uses `jenkins-deployer` only for the rollout. The
    Jenkins Kubernetes cloud still needs its Lab 9 credential to create pods in
    `jenkins-agents`.
-4. Confirm `lab7-registry` and the kind control plane are attached to the
-   Docker `kind` network. The current local endpoints are registry
-   `172.22.0.3:5000` and Prometheus `172.22.0.5:9090`; update the Jenkinsfile
-   environment values and the Compose static address if those addresses differ.
+4. Attach `lab7-registry` and `lab9-prometheus` to the Docker `kind` network.
+   The pipeline pushes to `lab7-registry:5000` and queries
+   `lab9-prometheus:9090` by DNS. The kind container runtime resolves
+   `localhost:5001` image references through its registry mirror.
+   Build `monitoring/kubernetes/lab10-tools.Dockerfile` as
+   `localhost:5001/taskflow-lab10-tools:1` and push it to the local registry.
 
 ## Prometheus health gate
 
@@ -47,7 +49,8 @@ production walkthrough.
 - Configure either Slack or Email Extension notifications. Set the Jenkins
   global environment variable `TASKFLOW_SLACK_CHANNEL` or
   `TASKFLOW_CI_EMAIL_RECIPIENTS`. Notifications include the branch and build
-  URL.
+  URL. The local lab currently uses Mailpit at `taskflow-lab10-mailpit:1025`,
+  with inbox `lab10@taskflow.test` and web UI on `http://localhost:8025`.
 - The API pipeline uses the local kind registry through
   `LAB7_REGISTRY_PUSH_ENDPOINT`; the mobile pipeline does not publish packages.
 
@@ -58,13 +61,16 @@ Git:
 
 | Credential ID | Jenkins type | Contents |
 | --- | --- | --- |
-| `taskflow-mobile-android-keystore` | Secret file | Owner-provided Android release keystore |
+| `taskflow-mobile-android-keystore` | Secret file | Android release keystore |
 | `taskflow-mobile-android-store-password` | Secret text | Keystore password |
 | `taskflow-mobile-android-signing-key` | Username with password | Username is the key alias; password is the key password |
 
 The mobile `main` branch checks the keystore and alias with `keytool` before it
-builds a signed release AAB. Every branch builds a debug APK. Never substitute a
-debug keystore for the owner-provided release key.
+builds a signed release AAB. Every branch builds a debug APK. This local lab
+uses a self-signed, lab-only release keystore because no production key was
+provided. Replace all three credentials with owner-controlled release signing
+material before distributing an app. The local backup is under
+`%LOCALAPPDATA%/TaskFlowLab10`, outside Git.
 
 ## Live walkthrough evidence
 
