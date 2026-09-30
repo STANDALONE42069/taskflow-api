@@ -24,6 +24,9 @@ and require review for pipeline and deployment-permission changes.
    The pipeline pushes to `lab7-registry:5000` and queries
    `lab9-prometheus:9090` by DNS. The kind container runtime resolves
    `localhost:5001` image references through its registry mirror.
+   Mirror the published Node base image for Kaniko pulls:
+   `docker tag node:24-alpine3.24 localhost:5001/library/node:24-alpine3.24`
+   and `docker push localhost:5001/library/node:24-alpine3.24`.
    Build `monitoring/kubernetes/lab10-tools.Dockerfile` as
    `localhost:5001/taskflow-lab10-tools:2` and push it to the local registry.
    The API image builder is Kaniko inside a restricted pod; the kind namespace

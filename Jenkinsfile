@@ -254,7 +254,7 @@ pipeline {
                     steps {
                         script {
                             env.LAB7_COMMIT = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                            env.LAB7_IMAGE_REF = env.LAB7_REGISTRY_PUSH_ENDPOINT + "/taskflow-api:" + env.LAB7_COMMIT
+                            env.LAB7_IMAGE_REF = "localhost:5001/taskflow-api:" + env.LAB7_COMMIT
                             env.LAB7_PUSH_IMAGE_REF = env.LAB7_REGISTRY_PUSH_ENDPOINT + "/taskflow-api:" + env.LAB7_COMMIT
                         }
                         container('kaniko') {
@@ -264,6 +264,8 @@ pipeline {
                                     --dockerfile "$WORKSPACE/backend/Dockerfile" \\
                                     --destination "$LAB7_PUSH_IMAGE_REF" \\
                                     --insecure-registry lab7-registry:5000 \\
+                                    --registry-mirror lab7-registry:5000 \\
+                                    --skip-default-registry-fallback \\
                                     --snapshot-mode redo
                             '''
                         }
