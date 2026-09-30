@@ -8,12 +8,10 @@ services:
       - "127.0.0.1:9090:9090"
     networks:
       default: {}
-      kind:
-        ipv4_address: 172.22.0.5
+      kind: {}
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/jenkins-slo.yml:/etc/prometheus/rules/jenkins-slo.yml:ro
-      - ./secrets/jenkins-prometheus-token:/etc/prometheus/secrets/jenkins-prometheus-token:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml

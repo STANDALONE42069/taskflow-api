@@ -17,8 +17,8 @@ pipeline {
     environment {
         NODE_ENV = 'test'
         CI = 'true'
-        LAB7_REGISTRY_PUSH_ENDPOINT = '172.22.0.3:5000'
-        LAB9_PROMETHEUS_URL = 'http://172.22.0.5:9090'
+        LAB7_REGISTRY_PUSH_ENDPOINT = 'lab7-registry:5000'
+        LAB9_PROMETHEUS_URL = 'http://lab9-prometheus:9090'
     }
 
     options {
