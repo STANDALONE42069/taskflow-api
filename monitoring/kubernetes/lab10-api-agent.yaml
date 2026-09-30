@@ -99,19 +99,16 @@ spec:
         limits:
           cpu: "2"
           memory: 2Gi
-    - name: buildkit
-      image: moby/buildkit:v0.33.0-rootless
-      command: ["/bin/sh", "-c", "sleep infinity"]
+    - name: kaniko
+      image: ghcr.io/osscontainertools/kaniko:debug@sha256:d6d74217dc077acfd3094992e917c357080a2d3fdd1042a49e34e29a7e57c572
+      command: ["/busybox/sh", "-c", "sleep infinity"]
       tty: true
-      env:
-        - name: BUILDKITD_FLAGS
-          value: --oci-worker-no-process-sandbox
       securityContext:
-        allowPrivilegeEscalation: true
+        runAsNonRoot: false
+        runAsUser: 0
+        allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
-        seccompProfile:
-          type: Unconfined
       resources:
         requests:
           cpu: 100m

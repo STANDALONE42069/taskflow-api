@@ -244,21 +244,21 @@ pipeline {
                     }
                 }
 
-                stage('Container Image — Rootless BuildKit, Push and Trivy') {
+                stage('Container Image — Kaniko, Push and Trivy') {
                     steps {
                         script {
                             env.LAB7_COMMIT = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
                             env.LAB7_IMAGE_REF = env.LAB7_REGISTRY_PUSH_ENDPOINT + "/taskflow-api:" + env.LAB7_COMMIT
                             env.LAB7_PUSH_IMAGE_REF = env.LAB7_REGISTRY_PUSH_ENDPOINT + "/taskflow-api:" + env.LAB7_COMMIT
                         }
-                        container('buildkit') {
+                        container('kaniko') {
                             sh '''
-                                export BUILDKITD_FLAGS="--oci-worker-no-process-sandbox --config $WORKSPACE/monitoring/buildkitd-lab10.toml"
-                                buildctl-daemonless.sh build \\
-                                    --frontend dockerfile.v0 \\
-                                    --local context="$WORKSPACE/backend" \\
-                                    --local dockerfile="$WORKSPACE/backend" \\
-                                    --output "type=image,name=$LAB7_PUSH_IMAGE_REF,push=true"
+                                /kaniko/executor \\
+                                    --context "$WORKSPACE/backend" \\
+                                    --dockerfile "$WORKSPACE/backend/Dockerfile" \\
+                                    --destination "$LAB7_PUSH_IMAGE_REF" \\
+                                    --insecure-registry lab7-registry:5000 \\
+                                    --snapshot-mode redo
                             '''
                         }
                         container('tools') {
