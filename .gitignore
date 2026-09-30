@@ -24,6 +24,28 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+security-reports/
+
+# Lab 9 credentials and locally captured UI evidence must stay out of Git.
+/monitoring/secrets/
+/monitoring/lab9-evidence/*.png
+
+# Terraform local working data and state must never be committed.
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Lab 8 uses a short-lived SSH key and Terraform-generated inventory.
+infra/ansible/.lab8_key
+infra/ansible/.lab8_key.pub
+infra/ansible/inventory.ini
+infra/ansible/known_hosts
+infra/ansible/.lab8_instance_id
+infra/terraform/tfplan.txt
+infra/terraform/tfplan-summary.txt
+/infra/terraform/tfplan
+infra/terraform/.lab8-backend-ready
 
 # Runtime data
 pids/
@@ -35,6 +57,9 @@ pids/
 coverage/
 *.lcov
 .nyc_output/
+backend/reports/
+backend/playwright-report/
+backend/test-results/
 
 # IDE
 .idea/

@@ -1,0 +1,60 @@
+groups:
+  - name: jenkins-slo
+    interval: 15s
+    rules:
+      - record: jenkins:build_success_ratio_7d
+        expr: |
+          sum(
+            (default_jenkins_builds_build_result_ordinal{jenkins_job=~"taskflow-lab4/.*"} == bool 0)
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
+          )
+          /
+          clamp_min(
+            count(
+              default_jenkins_builds_build_result_ordinal{jenkins_job=~"taskflow-lab4/.*"}
+                and on (jenkins_job, number)
+                (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
+            ),
+            1
+          )
+
+      - record: jenkins:build_duration_p95_seconds_7d
+        expr: |
+          quantile(
+            0.95,
+            default_jenkins_builds_build_duration_milliseconds{jenkins_job=~"taskflow-lab4/.*"}
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
+          ) / 1000
+
+      - record: jenkins:builds_under_6m_ratio_7d
+        expr: |
+          sum(
+            (default_jenkins_builds_build_duration_milliseconds{jenkins_job=~"taskflow-lab4/.*"} <= bool 360000)
+              and on (jenkins_job, number)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
+          )
+          /
+          clamp_min(
+            count(default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000),
+            1
+          )
+
+      - alert: JenkinsQueueBacklog
+        expr: taskflow_lab9_oldest_queue_wait_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Jenkins queue wait exceeds two minutes for five minutes
+          description: "The oldest Jenkins queue item has waited {{ $value | humanizeDuration }}."
+
+      - alert: JenkinsBuildDurationSLO
+        expr: jenkins:builds_under_6m_ratio_7d < 0.95
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Fewer than 95% of builds finished within six minutes
+          description: "The rolling seven-day under-six-minute ratio is {{ $value | humanizePercentage }}."

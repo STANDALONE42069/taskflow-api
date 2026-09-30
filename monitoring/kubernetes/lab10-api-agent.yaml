@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: jenkins-agents
+  labels:
+    app.kubernetes.io/part-of: taskflow-lab10
+    taskflow.dev/agent-profile: api
+spec:
+  serviceAccountName: jenkins-agent
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: node
+      image: node:24-alpine3.24
+      command: ["sh", "-c", "cat"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: tools
+      image: localhost:5001/taskflow-lab10-tools:2
+      command: ["/bin/sh", "-c", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    - name: python
+      image: python:3.13-slim
+      command: ["sh", "-c", "sleep infinity"]
+      tty: true
+      env:
+        - name: HOME
+          value: /home/jenkins/agent
+        - name: PYTHONUSERBASE
+          value: /home/jenkins/agent/.python
+        - name: PATH
+          value: /home/jenkins/agent/.python/bin:/usr/local/bin:/usr/bin:/bin
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: sonar
+      image: sonarsource/sonar-scanner-cli:5.0.1@sha256:02372948eaeeb10dfbe0cfd4174d44b8e405d0aeae431532b2bdb21d0347bf23
+      command: ["/bin/sh", "-c", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: playwright
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      command: ["/bin/bash", "-lc", "sleep infinity"]
+      tty: true
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+    - name: kaniko
+      image: ghcr.io/osscontainertools/kaniko:debug@sha256:d6d74217dc077acfd3094992e917c357080a2d3fdd1042a49e34e29a7e57c572
+      command: ["/busybox/sh", "-c", "sleep infinity"]
+      tty: true
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+          add: ["DAC_OVERRIDE", "CHOWN", "FOWNER", "SETUID", "SETGID"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi

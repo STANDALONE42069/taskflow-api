@@ -1,0 +1,9 @@
+{
+  "name": "taskflow-critical-policy-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lockfile-only fixture for the Lab 6 critical CVE policy gate",
+  "dependencies": {
+    "praisonai": "1.7.4"
+  }
+}

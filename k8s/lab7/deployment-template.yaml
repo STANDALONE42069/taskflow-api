@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-blue
+  labels:
+    app: taskflow-api
+    color: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskflow-api
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: taskflow-api
+        color: blue
+    spec:
+      containers:
+        - name: taskflow-api
+          image: __TASKFLOW_IMAGE__
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-green
+  labels:
+    app: taskflow-api
+    color: green
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskflow-api
+      color: green
+  template:
+    metadata:
+      labels:
+        app: taskflow-api
+        color: green
+    spec:
+      containers:
+        - name: taskflow-api
+          image: __TASKFLOW_IMAGE__
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

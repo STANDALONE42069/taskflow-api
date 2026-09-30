@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Jenkins
+    orgId: 1
+    folder: Jenkins
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

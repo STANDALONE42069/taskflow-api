@@ -1,0 +1,104 @@
+diff --git a/Jenkinsfile b/Jenkinsfile
+index d846a48..1e4d583 100644
+--- a/Jenkinsfile
++++ b/Jenkinsfile
+@@ -7,6 +7,11 @@ pipeline {
+             defaultValue: false,
+             description: 'Use a missing image tag to demonstrate automatic blue/green rollback.'
+         )
++        booleanParam(
++            name: 'LAB9_RUN_K8S_BURST',
++            defaultValue: false,
++            description: 'Run ten 6-minute Kubernetes agent requests for the Lab 9 queue-alert demonstration.'
++        )
+     }
+ 
+     environment {
+@@ -49,16 +54,18 @@ pipeline {
+ 
+         stage('Install') {
+             agent {
+-                docker {
+-                    image 'node:24-alpine3.24'
+-                    reuseNode true
++                kubernetes {
++                    cloud 'kubernetes'
++                    defaultContainer 'node'
++                    yamlFile 'monitoring/kubernetes/node-pod-template.yaml'
+                 }
+             }
+             steps {
+-                echo "Building ${env.APP_NAME} with NODE_ENV=${env.NODE_ENV}"
++                echo "LAB9_POD_CI node=${env.NODE_NAME} app=${env.APP_NAME}"
+                 sh 'node --version'
+                 dir('backend') {
+                     sh 'npm ci'
++                    sh 'npm test -- --runInBand'
+                 }
+             }
+             post {
+@@ -68,6 +75,23 @@ pipeline {
+             }
+         }
+ 
++        stage('Prepare Docker-dependent checks') {
++            steps {
++                sh '''
++                    set -eu
++                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/home/jenkins/agent"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
++                    test -n "$workspace_volume"
++                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
++                        -w "$WORKSPACE/backend" node:24-alpine3.24 npm ci
++                '''
++            }
++            post {
++                failure {
++                    script { env.FAILED_STAGE = env.STAGE_NAME }
++                }
++            }
++        }
++
+         stage('SAST — ESLint and Semgrep') {
+             steps {
+                 sh '''
+@@ -248,6 +272,40 @@ pipeline {
+             }
+         }
+ 
++        stage('Lab 9 — Kubernetes Burst Demo') {
++            when {
++                allOf {
++                    branch 'codex/lab9-k8s-metrics'
++                    expression { return params.LAB9_RUN_K8S_BURST }
++                }
++            }
++            steps {
++                script {
++                    def burst = [:]
++                    for (int i = 1; i <= 10; i++) {
++                        def slot = i
++                        burst["k8s-build-${slot}"] = {
++                            node('k8s-node') {
++                                echo "LAB9_POD_START slot=${slot} node=${env.NODE_NAME}"
++                                container('node') {
++                                    sh 'node --version'
++                                }
++                                // Keep the queue saturated long enough for the 5-minute alert.
++                                sleep(time: 360, unit: 'SECONDS')
++                                echo "LAB9_POD_DONE slot=${slot} node=${env.NODE_NAME}"
++                            }
++                        }
++                    }
++                    parallel burst
++                }
++            }
++            post {
++                failure {
++                    script { env.FAILED_STAGE = env.STAGE_NAME }
++                }
++            }
++        }
++
+         stage('SonarQube Analysis') {
+             steps {
+                 withSonarQubeEnv('SonarQube') {

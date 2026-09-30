@@ -1,0 +1,71 @@
+---
+- name: Configure the short-lived TaskFlow compute host
+  hosts: taskflow
+  gather_facts: false
+  remote_user: ubuntu
+  become: true
+
+  tasks:
+    - name: Install Python so Ansible modules can run
+      ansible.builtin.raw: apt-get update -qq && apt-get install -y python3
+      changed_when: false
+
+    - name: Install Node.js, Docker, and curl
+      ansible.builtin.apt:
+        name:
+          - nodejs
+          - docker.io
+          - curl
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Verify Node.js is installed
+      ansible.builtin.command: node --version
+      changed_when: false
+
+    - name: Verify the Docker CLI can use the LocalEmu host socket
+      ansible.builtin.command: docker version
+      changed_when: false
+
+    - name: Remove a previous application container for this build
+      ansible.builtin.command: docker rm --force taskflow-api-lab8-{{ instance_id }}
+      register: previous_container
+      changed_when: previous_container.rc == 0
+      failed_when: false
+
+    - name: Pull the immutable TaskFlow API image produced by Lab 7
+      ansible.builtin.command: docker pull {{ taskflow_image }}
+      changed_when: true
+
+    - name: Run TaskFlow API on the EC2 instance network namespace
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --detach
+          - --name
+          - taskflow-api-lab8-{{ instance_id }}
+          - --restart
+          - unless-stopped
+          - --network
+          - container:localemu-ec2-{{ instance_id }}
+          - --no-healthcheck
+          - --env
+          - PORT=8080
+          - "{{ taskflow_image }}"
+      changed_when: true
+
+    - name: Wait for the TaskFlow health endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/health
+        status_code: 200
+        return_content: true
+      register: taskflow_health
+      retries: 12
+      delay: 5
+      until: taskflow_health.status == 200
+
+    - name: Report the deployed application health
+      ansible.builtin.debug:
+        msg: "TaskFlow API is healthy at {{ ansible_host }}:8080 using {{ taskflow_image }}"

@@ -1,0 +1,21 @@
+LAB9_POD_START slot=1 node=lab9-node-6t45v
+LAB9_POD_START slot=2 node=lab9-node-pz2mb
+LAB9_POD_DONE slot=1 node=lab9-node-6t45v
+LAB9_POD_DONE slot=2 node=lab9-node-pz2mb
+LAB9_POD_START slot=3 node=lab9-node-4qjmq
+LAB9_POD_START slot=4 node=lab9-node-71bmp
+LAB9_POD_START slot=6 node=lab9-node-kcl71
+LAB9_POD_START slot=8 node=lab9-node-fnjxx
+LAB9_POD_START slot=7 node=lab9-node-jjjbw
+LAB9_POD_START slot=10 node=lab9-node-9bhqm
+LAB9_POD_START slot=5 node=lab9-node-zv01b
+LAB9_POD_START slot=9 node=lab9-node-3lknt
+LAB9_POD_DONE slot=3 node=lab9-node-4qjmq
+LAB9_POD_DONE slot=4 node=lab9-node-71bmp
+LAB9_POD_DONE slot=6 node=lab9-node-kcl71
+LAB9_POD_DONE slot=8 node=lab9-node-fnjxx
+LAB9_POD_DONE slot=7 node=lab9-node-jjjbw
+LAB9_POD_DONE slot=10 node=lab9-node-9bhqm
+LAB9_POD_DONE slot=5 node=lab9-node-zv01b
+LAB9_POD_DONE slot=9 node=lab9-node-3lknt
+Finished: SUCCESS
