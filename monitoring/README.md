@@ -19,20 +19,21 @@ It does not include Jenkins credentials or tokens.
 3. In **Manage Jenkins → Clouds**, add a Kubernetes cloud using namespace
    `jenkins-agents`, that credential, and the existing kind API endpoint. Add a
    pod template with label `k8s-node`, container name `node`, and the contents of
-   `kubernetes/node-pod-template.yaml`. Set the cloud's maximum instance count
-   to **2** for the first burst.
+    `kubernetes/node-pod-template.yaml`. Set both the cloud and pod template
+    **Concurrency Limit** to **2** for the first burst.
 4. Push this branch and run its multibranch job with the
    `LAB9_RUN_K8S_BURST` parameter enabled. The `Lab 9 — Kubernetes Burst Demo`
    stage requests ten agents and holds them for six minutes. With the cap at two,
-   the remaining requests stay queued. The alert becomes active after
-   five minutes. Raise the cloud cap to ten; the queue should drain and the
-   alert should clear. Jenkins deletes the dynamic agent pods after each branch
-   finishes.
+    the remaining requests stay queued. The alert fires after the oldest item
+    has waited more than two minutes for a further five minutes. Raise both
+    concurrency limits to ten; the queue should drain and the alert should
+    clear. Jenkins deletes the dynamic agent pods after each branch finishes.
 
-The main pipeline still uses the existing `linux-build` agent for stages that
-need its Docker socket and shared workspace. Only this explicit burst stage
-uses Kubernetes, so the Lab 7 kind cluster and Docker-based release stages do
-not lose their Docker access.
+The `Install` stage runs `npm ci` and unit tests in a fresh Kubernetes pod.
+The existing `linux-build` agent remains available for later stages that need
+its Docker socket and shared workspace; `Prepare Docker-dependent checks`
+recreates dependencies in that workspace. The burst stage also uses ephemeral
+Kubernetes pods.
 
 ## Prometheus and Grafana
 
@@ -59,20 +60,30 @@ endpoint. If the endpoint is protected, create a dedicated Jenkins account with
 the `basic_auth` block in `prometheus/prometheus.yml`. Do not use an admin or
 GitHub token for scraping.
 
-The queue alert uses the plugin's actual
-`default_jenkins_executors_queue_length` metric and records the old
-`jenkins_queue_size_value` name only as a compatibility alias. The SLO target
-is at least 95% of completed builds under 360 seconds in the rolling 168-hour
+Copy `jenkins/lab9-observability.init.groovy` into
+`JENKINS_HOME/init.groovy.d/` and restart Jenkins. It enables per-build metrics
+with a 168-hour retention window, sets 15-second collection, and exports the
+live `taskflow_lab9_oldest_queue_wait_seconds` gauge. The backlog alert fires
+only when the oldest queued item has already waited over 120 seconds for a
+further five minutes. `jenkins_queue_size_value` is supplied directly by the
+metrics plugin and drives the queue panel. The SLO target is at least 95% of
+completed TaskFlow pipeline builds under 360 seconds in the rolling 168-hour
 window. The plugin's duration metric is a summary rather than a histogram; the
 dashboard calculates p95 from the per-build duration gauges collected within
 that window.
 
 ## Evidence
 
-Save the requested screenshots in `monitoring/lab9-evidence/`:
+The requested evidence is saved in `monitoring/lab9-evidence/`:
+PNG screenshots are local deliverables and are intentionally ignored by Git.
 
-- Jenkins build log with `LAB9_POD_START` and `LAB9_POD_DONE` entries, plus the
-  kind namespace showing ephemeral agent pods.
-- Prometheus/Grafana alert while the queue is held at a cap of two.
-- The same alert cleared after raising the cap and draining the queue.
-- Screenshot or export of the dashboard's three panels.
+- `Jenkinsfile.diff` shows the Kubernetes Install agent and burst stage.
+- `jenkins-queue-cap2.png` and `kubernetes-pods-running.txt` show the saturated
+  queue and live ephemeral pods.
+- `prometheus-queue-alert-firing.png` and
+  `prometheus-queue-alert-cleared.png` show the alert transition.
+- `jenkins-queue-cleared-cap10.png` shows that the queue drained.
+- `grafana-dashboard-queue8.png` and `grafana-dashboard-queue0.png` show all
+  three populated panels before and after the queue drained.
+- `jenkins-build3-success.png` shows the successful ten-request burst build.
+- `grafana/dashboards/jenkins-health.json` is the importable dashboard JSON.

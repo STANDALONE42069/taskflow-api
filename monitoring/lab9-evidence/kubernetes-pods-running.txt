@@ -1,0 +1,7 @@
+NAME              READY   STATUS    RESTARTS   AGE     IP            NODE                 NOMINATED NODE   READINESS GATES
+lab9-node-3lknt   2/2     Running   0          3m59s   10.244.0.19   lab7-control-plane   <none>           <none>
+lab9-node-9bhqm   2/2     Running   0          3m59s   10.244.0.20   lab7-control-plane   <none>           <none>
+lab9-node-fnjxx   2/2     Running   0          3m59s   10.244.0.18   lab7-control-plane   <none>           <none>
+lab9-node-jjjbw   2/2     Running   0          3m59s   10.244.0.17   lab7-control-plane   <none>           <none>
+lab9-node-kcl71   2/2     Running   0          3m59s   10.244.0.16   lab7-control-plane   <none>           <none>
+lab9-node-zv01b   2/2     Running   0          3m59s   10.244.0.15   lab7-control-plane   <none>           <none>
