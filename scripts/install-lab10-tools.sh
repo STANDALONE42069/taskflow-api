@@ -3,6 +3,9 @@ set -eu
 
 TOOLS_DIR="${WORKSPACE:-$(pwd)}/.tools/bin"
 mkdir -p "$TOOLS_DIR"
+if [ -d "${TASKFLOW_CI_TOOL_CACHE:-/nonexistent}" ]; then
+    cp -n "$TASKFLOW_CI_TOOL_CACHE/"* "$TOOLS_DIR/"
+fi
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT HUP INT TERM
 

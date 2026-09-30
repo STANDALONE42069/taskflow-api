@@ -25,7 +25,7 @@ and require review for pipeline and deployment-permission changes.
    `lab9-prometheus:9090` by DNS. The kind container runtime resolves
    `localhost:5001` image references through its registry mirror.
    Build `monitoring/kubernetes/lab10-tools.Dockerfile` as
-   `localhost:5001/taskflow-lab10-tools:1` and push it to the local registry.
+   `localhost:5001/taskflow-lab10-tools:2` and push it to the local registry.
    The API image builder is Kaniko inside a restricted pod; the kind namespace
    baseline PodSecurity policy does not allow rootless BuildKit's unconfined
    seccomp setting.

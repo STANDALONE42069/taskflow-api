@@ -33,7 +33,7 @@ spec:
           cpu: "1"
           memory: 1Gi
     - name: tools
-      image: localhost:5001/taskflow-lab10-tools:1
+      image: localhost:5001/taskflow-lab10-tools:2
       command: ["/bin/sh", "-c", "sleep infinity"]
       tty: true
       securityContext:
