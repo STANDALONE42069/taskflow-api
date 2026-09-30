@@ -3,6 +3,11 @@ pipeline {
 
     parameters {
         booleanParam(
+            name: 'DEPLOY_PRODUCTION',
+            defaultValue: false,
+            description: 'Request production deployment after CI, the Prometheus health gate and administrator approval.'
+        )
+        booleanParam(
             name: 'LAB7_INJECT_FAILURE',
             defaultValue: false,
             description: 'Use a missing image tag to demonstrate the blue/green rollback.'
@@ -402,7 +407,10 @@ pipeline {
         stage('Pipeline Health Gate — Last 20 Builds') {
             when {
                 beforeAgent true
-                branch 'main'
+                allOf {
+                    branch 'main'
+                    expression { return params.DEPLOY_PRODUCTION }
+                }
             }
             agent {
                 kubernetes {
@@ -425,7 +433,10 @@ pipeline {
         stage('Approval — Deploy Production') {
             when {
                 beforeInput true
-                branch 'main'
+                allOf {
+                    branch 'main'
+                    expression { return params.DEPLOY_PRODUCTION }
+                }
             }
             input {
                 message 'The build gates passed and the last 20 builds meet the 90% success target. Deploy the green image to production?'
@@ -440,7 +451,10 @@ pipeline {
         stage('Deploy — Production') {
             when {
                 beforeAgent true
-                branch 'main'
+                allOf {
+                    branch 'main'
+                    expression { return params.DEPLOY_PRODUCTION }
+                }
             }
             agent {
                 kubernetes {

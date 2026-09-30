@@ -17,9 +17,9 @@ fi
 
 commit="${GIT_COMMIT:-$(git rev-parse HEAD)}"
 if [ "${LAB7_INJECT_FAILURE:-false}" = true ]; then
-    LAB7_DEPLOY_IMAGE="${LAB7_REGISTRY_PUSH_ENDPOINT:-lab7-registry:5000}/taskflow-api:missing-$commit"
+    LAB7_DEPLOY_IMAGE="${LAB7_REGISTRY_PULL_ENDPOINT:-localhost:5001}/taskflow-api:missing-$commit"
 else
-    LAB7_DEPLOY_IMAGE="${LAB7_REGISTRY_PUSH_ENDPOINT:-lab7-registry:5000}/taskflow-api:$commit"
+    LAB7_DEPLOY_IMAGE="${LAB7_REGISTRY_PULL_ENDPOINT:-localhost:5001}/taskflow-api:$commit"
 fi
 
 export LAB7_PREVIOUS_COLOR LAB7_TARGET_COLOR LAB7_BOOTSTRAP LAB7_DEPLOY_IMAGE
