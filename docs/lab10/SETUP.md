@@ -39,10 +39,14 @@ in `monitoring/prometheus/prometheus.yml`. Do not commit the token. Start
 `monitoring/docker-compose.yml` after the kind network exists. In the Jenkins
 Prometheus plugin, enable per-build metrics, retain them for 168 hours, collect
 every 15 seconds, and use the `jenkins_job` label. The gate reads the most
-recent 20 completed build records for the current API multibranch job. It fails
+recent 20 completed build records across branches of the API multibranch project
+(`taskflow-lab4/.*`), ordered globally by start time. Running builds are excluded.
+It fails
 closed if fewer than 20 records are available or if the success rate is below
-90 percent. Seed at least 20 completed main-branch builds before the first
-production walkthrough.
+90 percent. `DEPLOY_PRODUCTION=false` runs CI without promotion; requesting
+production requires `DEPLOY_PRODUCTION=true`, the same health check, and admin
+approval. A failed health check prevents both approval and production deployment.
+Do not edit build results or inject success metrics to clear this gate.
 
 ## Jenkins integrations
 
