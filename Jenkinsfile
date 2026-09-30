@@ -95,7 +95,7 @@ pipeline {
                             steps {
                                 container('python') {
                                     sh '''
-                                        python -m pip install --disable-pip-version-check --no-cache-dir semgrep==1.178.0
+                                        python -m pip install --user --disable-pip-version-check --no-cache-dir semgrep==1.178.0
                                         mkdir -p security-reports
                                         semgrep scan --config=p/owasp-top-ten --config=p/nodejs --metrics=off \\
                                             --sarif --sarif-output=security-reports/semgrep.sarif backend/src
@@ -283,7 +283,7 @@ pipeline {
                         stage('Install IaC Toolchain') {
                             steps {
                                 container('python') {
-                                    sh 'python -m pip install --disable-pip-version-check --no-cache-dir checkov ansible-lint'
+                                    sh 'python -m pip install --user --disable-pip-version-check --no-cache-dir checkov ansible-lint'
                                 }
                             }
                         }

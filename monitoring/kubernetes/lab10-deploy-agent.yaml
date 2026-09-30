@@ -10,6 +10,9 @@ spec:
   automountServiceAccountToken: true
   restartPolicy: Never
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
     fsGroup: 1000
     seccompProfile:
       type: RuntimeDefault
@@ -30,8 +33,8 @@ spec:
           cpu: "1"
           memory: 1Gi
     - name: tools
-      image: alpine:3.24
-      command: ["/bin/sh", "-c", "apk add --no-cache bash coreutils curl git gzip tar unzip && sleep infinity"]
+      image: lab7-registry:5000/taskflow-lab10-tools:1
+      command: ["/bin/sh", "-c", "sleep infinity"]
       tty: true
       securityContext:
         allowPrivilegeEscalation: false

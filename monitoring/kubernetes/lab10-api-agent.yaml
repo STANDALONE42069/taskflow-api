@@ -10,6 +10,9 @@ spec:
   automountServiceAccountToken: false
   restartPolicy: Never
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
     fsGroup: 1000
     seccompProfile:
       type: RuntimeDefault
@@ -30,8 +33,8 @@ spec:
           cpu: "1"
           memory: 1Gi
     - name: tools
-      image: alpine:3.24
-      command: ["/bin/sh", "-c", "apk add --no-cache bash coreutils curl git gzip tar unzip && sleep infinity"]
+      image: lab7-registry:5000/taskflow-lab10-tools:1
+      command: ["/bin/sh", "-c", "sleep infinity"]
       tty: true
       securityContext:
         allowPrivilegeEscalation: false
@@ -48,6 +51,13 @@ spec:
       image: python:3.13-slim
       command: ["sh", "-c", "sleep infinity"]
       tty: true
+      env:
+        - name: HOME
+          value: /home/jenkins/agent
+        - name: PYTHONUSERBASE
+          value: /home/jenkins/agent/.python
+        - name: PATH
+          value: /home/jenkins/agent/.python/bin:/usr/local/bin:/usr/bin:/bin
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
