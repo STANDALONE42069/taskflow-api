@@ -44,7 +44,7 @@ function sortTasks(taskList) {
 
 // Health check
 app.get('/health', (_, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
+  res.status(503).json({ status: 'broken-demo', timestamp: Date.now() });
 });
 
 // List tasks with filters
