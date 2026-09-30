@@ -1,5 +1,6 @@
 const endpoint = process.env.LAB9_PROMETHEUS_URL;
 const jobName = process.env.PROMETHEUS_JOB_LABEL || process.env.JOB_NAME;
+const jobPattern = process.env.PROMETHEUS_JOB_PATTERN;
 const minimumBuilds = 20;
 const minimumSuccessRate = 0.9;
 
@@ -11,12 +12,14 @@ function quotePrometheusLabel(value) {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', '\\n');
 }
 
-const selector = `{jenkins_job="${quotePrometheusLabel(jobName)}"}`;
+const selector = jobPattern
+  ? `{jenkins_job=~"${quotePrometheusLabel(jobPattern)}"}`
+  : `{jenkins_job="${quotePrometheusLabel(jobName)}"}`;
 const starts = `default_jenkins_builds_build_start_time_milliseconds${selector}`;
 const results = `default_jenkins_builds_build_result_ordinal${selector}`;
-const latestCompleted = `topk by (jenkins_job) (20, ${starts} and on (jenkins_job, number) ${results})`;
-const countQuery = `count by (jenkins_job) (${latestCompleted})`;
-const successQuery = `sum by (jenkins_job) ((${results} == bool 0) and on (jenkins_job, number) ${latestCompleted}) / ${countQuery}`;
+const latestCompleted = `topk(20, ${starts} and on (jenkins_job, number) ${results})`;
+const countQuery = `count(${latestCompleted})`;
+const successQuery = `sum((${results} == bool 0) and on (jenkins_job, number) ${latestCompleted}) / ${countQuery}`;
 
 async function queryPrometheus(query) {
   const url = new URL('/api/v1/query', endpoint);
@@ -49,7 +52,7 @@ if (!Number.isFinite(buildCount) || buildCount < minimumBuilds || !Number.isFini
   throw new Error(`Pipeline health gate is closed: Prometheus has fewer than ${minimumBuilds} completed builds for ${jobName}.`);
 }
 
-console.log(`PIPELINE_HEALTH job=${jobName} builds=${buildCount} success_rate=${(successRate * 100).toFixed(1)}% threshold=90%`);
+console.log(`PIPELINE_HEALTH scope=${jobPattern || jobName} builds=${buildCount} success_rate=${(successRate * 100).toFixed(1)}% threshold=90%`);
 if (successRate < minimumSuccessRate) {
   throw new Error(`Pipeline health gate blocked production: ${(successRate * 100).toFixed(1)}% is below 90%.`);
 }

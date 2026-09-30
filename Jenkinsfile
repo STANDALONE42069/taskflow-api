@@ -424,6 +424,7 @@ pipeline {
             steps {
                 withEnv([
                     'PROMETHEUS_JOB_LABEL=' + env.JOB_NAME,
+                    'PROMETHEUS_JOB_PATTERN=taskflow-lab4/.*',
                     'LAB9_PROMETHEUS_URL=' + env.LAB9_PROMETHEUS_URL
                 ]) {
                     sh 'node scripts/check-prometheus-health.mjs'
