@@ -2,22 +2,19 @@ groups:
   - name: jenkins-slo
     interval: 15s
     rules:
-      - record: jenkins_queue_size_value
-        expr: default_jenkins_executors_queue_length
-
       - record: jenkins:build_success_ratio_7d
         expr: |
           sum(
-            (default_jenkins_builds_build_result_ordinal == bool 0)
+            (default_jenkins_builds_build_result_ordinal{jenkins_job=~"taskflow-lab4/.*"} == bool 0)
               and on (jenkins_job, number)
-              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
           )
           /
           clamp_min(
             count(
-              (default_jenkins_builds_build_result_ordinal < 3)
+              default_jenkins_builds_build_result_ordinal{jenkins_job=~"taskflow-lab4/.*"}
                 and on (jenkins_job, number)
-                (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+                (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
             ),
             1
           )
@@ -26,32 +23,32 @@ groups:
         expr: |
           quantile(
             0.95,
-            default_jenkins_builds_build_duration_milliseconds
+            default_jenkins_builds_build_duration_milliseconds{jenkins_job=~"taskflow-lab4/.*"}
               and on (jenkins_job, number)
-              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
           ) / 1000
 
       - record: jenkins:builds_under_6m_ratio_7d
         expr: |
           sum(
-            (default_jenkins_builds_build_duration_milliseconds <= bool 360000)
+            (default_jenkins_builds_build_duration_milliseconds{jenkins_job=~"taskflow-lab4/.*"} <= bool 360000)
               and on (jenkins_job, number)
-              (default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000)
+              (default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000)
           )
           /
           clamp_min(
-            count(default_jenkins_builds_build_start_time_milliseconds > (time() - 604800) * 1000),
+            count(default_jenkins_builds_build_start_time_milliseconds{jenkins_job=~"taskflow-lab4/.*"} > (time() - 604800) * 1000),
             1
           )
 
       - alert: JenkinsQueueBacklog
-        expr: jenkins_queue_size_value > 0
+        expr: taskflow_lab9_oldest_queue_wait_seconds > 120
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: Jenkins build queue has been non-empty for five minutes
-          description: "{{ $value }} Jenkins item(s) are waiting for an executor."
+          summary: Jenkins queue wait exceeds two minutes for five minutes
+          description: "The oldest Jenkins queue item has waited {{ $value | humanizeDuration }}."
 
       - alert: JenkinsBuildDurationSLO
         expr: jenkins:builds_under_6m_ratio_7d < 0.95

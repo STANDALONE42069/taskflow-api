@@ -54,17 +54,36 @@ pipeline {
 
         stage('Install') {
             agent {
-                docker {
-                    image 'node:24-alpine3.24'
-                    reuseNode true
+                kubernetes {
+                    cloud 'kubernetes'
+                    defaultContainer 'node'
+                    yamlFile 'monitoring/kubernetes/node-pod-template.yaml'
                 }
             }
             steps {
-                echo "Building ${env.APP_NAME} with NODE_ENV=${env.NODE_ENV}"
+                echo "LAB9_POD_CI node=${env.NODE_NAME} app=${env.APP_NAME}"
                 sh 'node --version'
                 dir('backend') {
                     sh 'npm ci'
+                    sh 'npm test -- --runInBand'
                 }
+            }
+            post {
+                failure {
+                    script { env.FAILED_STAGE = env.STAGE_NAME }
+                }
+            }
+        }
+
+        stage('Prepare Docker-dependent checks') {
+            steps {
+                sh '''
+                    set -eu
+                    workspace_volume="$(docker inspect --format='{{range .Mounts}}{{if eq .Destination "/home/jenkins/agent"}}{{.Name}}{{end}}{{end}}' jenkins-linux-build)"
+                    test -n "$workspace_volume"
+                    docker run --rm -v "$workspace_volume:/home/jenkins/agent" \\
+                        -w "$WORKSPACE/backend" node:24-alpine3.24 npm ci
+                '''
             }
             post {
                 failure {

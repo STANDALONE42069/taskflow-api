@@ -29,10 +29,11 @@ It does not include Jenkins credentials or tokens.
    alert should clear. Jenkins deletes the dynamic agent pods after each branch
    finishes.
 
-The main pipeline still uses the existing `linux-build` agent for stages that
-need its Docker socket and shared workspace. Only this explicit burst stage
-uses Kubernetes, so the Lab 7 kind cluster and Docker-based release stages do
-not lose their Docker access.
+The `Install` stage runs `npm ci` and unit tests in a fresh Kubernetes pod.
+The existing `linux-build` agent remains available for later stages that need
+its Docker socket and shared workspace; `Prepare Docker-dependent checks`
+recreates dependencies in that workspace. The burst stage also uses ephemeral
+Kubernetes pods.
 
 ## Prometheus and Grafana
 
@@ -59,10 +60,14 @@ endpoint. If the endpoint is protected, create a dedicated Jenkins account with
 the `basic_auth` block in `prometheus/prometheus.yml`. Do not use an admin or
 GitHub token for scraping.
 
-The queue alert uses the plugin's actual
-`default_jenkins_executors_queue_length` metric and records the old
-`jenkins_queue_size_value` name only as a compatibility alias. The SLO target
-is at least 95% of completed builds under 360 seconds in the rolling 168-hour
+Copy `jenkins/lab9-observability.init.groovy` into
+`JENKINS_HOME/init.groovy.d/` and restart Jenkins. It enables per-build metrics
+with a 168-hour retention window, sets 15-second collection, and exports the
+live `taskflow_lab9_oldest_queue_wait_seconds` gauge. The backlog alert fires
+only when the oldest queued item has already waited over 120 seconds for a
+further five minutes. `jenkins_queue_size_value` is supplied directly by the
+metrics plugin and drives the queue panel. The SLO target is at least 95% of
+completed TaskFlow pipeline builds under 360 seconds in the rolling 168-hour
 window. The plugin's duration metric is a summary rather than a histogram; the
 dashboard calculates p95 from the per-build duration gauges collected within
 that window.
