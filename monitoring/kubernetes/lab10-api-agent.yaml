@@ -109,6 +109,7 @@ spec:
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
+          add: ["DAC_OVERRIDE", "CHOWN", "FOWNER", "SETUID", "SETGID"]
       resources:
         requests:
           cpu: 100m
