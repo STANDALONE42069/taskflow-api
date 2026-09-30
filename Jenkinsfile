@@ -73,6 +73,7 @@ pipeline {
                 }
 
                 stage('Parallel Quality Gates') {
+                    failFast true
                     parallel {
                         stage('Lint') {
                             steps {
@@ -102,7 +103,7 @@ pipeline {
                                     sh '''
                                         python -m pip install --user --disable-pip-version-check --no-cache-dir semgrep==1.178.0
                                         mkdir -p security-reports
-                                        semgrep scan --config=p/owasp-top-ten --config=p/nodejs --metrics=off \\
+                                        semgrep scan --error --config=p/owasp-top-ten --config=p/nodejs --metrics=off \\
                                             --sarif --sarif-output=security-reports/semgrep.sarif backend/src
                                     '''
                                 }
