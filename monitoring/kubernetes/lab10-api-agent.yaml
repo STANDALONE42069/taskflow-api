@@ -107,9 +107,11 @@ spec:
         - name: BUILDKITD_FLAGS
           value: --oci-worker-no-process-sandbox
       securityContext:
-        allowPrivilegeEscalation: false
+        allowPrivilegeEscalation: true
         capabilities:
           drop: ["ALL"]
+        seccompProfile:
+          type: Unconfined
       resources:
         requests:
           cpu: 100m
